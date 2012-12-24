@@ -34,9 +34,9 @@ local function listen_for_input(debug_info)
 	repeat
 		local loc = get_line_of_code(debug_info)
 		if loc then
-			print("(LuaDB) " .. debug_info.short_src .. ":" .. debug_info.currentline .. ":", loc)
+			print("(db) " .. debug_info.short_src .. ":" .. debug_info.currentline .. ":", loc)
 		end
-		io.write("(LuaDB) >> ")
+		io.write("(db) >> ")
 		local input = io.read()
 		local command = string.match(input, "%w+")
 
@@ -44,10 +44,10 @@ local function listen_for_input(debug_info)
 		if handler then
 			finished, error_msg = pcall(function() handler(input) end)
 			if not finished and error_msg then
-				print("(LuaDB) Failed running command: " .. tostring(error_msg))
+				print("(db) Failed running command: " .. tostring(error_msg))
 			end
 		else
-			print("(LuaDB) Unknown command: " .. command)
+			print("(db) Unknown command: " .. command)
 		end
 	until finished
 end
@@ -86,7 +86,7 @@ local function breakpoint()
 		local debug_info = debug.getinfo(2, "Sl")
 		local src = debug_info.short_src
 		local line = debug_info.currentline
-		print("(LuaDB) Hit breakpoint: " .. src .. ":" .. line)
+		print("(db) Hit breakpoint: " .. src .. ":" .. line)
 
 		mode = MODE_PAUSED
 		debug.sethook(debug_event, "lrc")
