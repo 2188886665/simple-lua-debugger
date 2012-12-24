@@ -1,5 +1,12 @@
-local enabled = false
+local MODE_RUNNING = nil
+local MODE_PAUSED = "paused"
+local MODE_STEP_INTO = "step_into"
+local MODE_STEP_OVER = "step_over"
+
+local mode = nil
 local command_handlers = {}
+
+local our_source = debug.getinfo(1, "S").source
 
 local function listen_for_input()
 	local finished = false
@@ -20,26 +27,48 @@ local function listen_for_input()
 	until finished
 end
 
-local function line_event(event, line)
-	listen_for_input()
+local function debug_event(event, line)
+	-- ignore events if they are happening inside luadb
+	local source = debug.getinfo(2).source
+	if source == our_source then
+		return
+	end
+
+	if event == "line" then
+		if mode == MODE_PAUSED then
+			listen_for_input()
+		elseif mode == MODE_STEP_INTO then
+			mode = MODE_PAUSED
+			listen_for_input()
+		elseif mode == MODE_STEP_OVER then
+			-- TODO: Implement!
+		end
+	else
+		-- do nothing for now
+	end
 end
 
 
 command_handlers["continue"] = function()
 	debug.sethook()
-	enabled = false
+	mode = MODE_RUNNING
 end
 command_handlers["c"] = command_handlers["continue"]
 
+command_handlers["step"] = function()
+	mode = MODE_STEP_INTO
+end
+command_handlers["s"] = command_handlers["step"]
+
 local function breakpoint()
-	if not enabled then
+	if mode == MODE_RUNNING then
 		local debug_info = debug.getinfo(2, "Sl")
 		local src = debug_info.short_src
 		local line = debug_info.currentline
 		print("(LuaDB) Hit breakpoint: " .. src .. ":" .. line)
 
-		enabled = true
-		debug.sethook(line_event, "l")
+		mode = MODE_PAUSED
+		debug.sethook(debug_event, "lrc")
 	end
 end
 
