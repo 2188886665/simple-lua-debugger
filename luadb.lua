@@ -1,3 +1,5 @@
+local luadb_src = require 'luadb_src'
+
 -------------------
 -- Core
 -------------------
@@ -13,9 +15,27 @@ local step_over_depth = 0
 local command_handlers = {}
 local our_source = debug.getinfo(1, "S").source
 
-local function listen_for_input()
+local function get_line_of_code(debug_info)
+	local file_name = debug_info.source
+
+	-- not from a file
+	if string.sub(file_name, 1, 1) ~= "@" then
+		return nil
+	end
+	
+	-- string '@'
+	file_name = string.sub(file_name, 2)
+
+	return luadb_src.get_line(file_name, debug_info.currentline)
+end
+
+local function listen_for_input(debug_info)
 	local finished = false
 	repeat
+		local loc = get_line_of_code(debug_info)
+		if loc then
+			print("(LuaDB) " .. debug_info.short_src .. ":" .. debug_info.currentline .. ":", loc)
+		end
 		io.write("(LuaDB) >> ")
 		local input = io.read()
 		local command = string.match(input, "%w+")
@@ -42,14 +62,14 @@ local function debug_event(event, line)
 	
 	if event == "line" then
 		if mode == MODE_PAUSED then
-			listen_for_input()
+			listen_for_input(debug_info)
 		elseif mode == MODE_STEP_INTO then
 			mode = MODE_PAUSED
-			listen_for_input()
+			listen_for_input(debug_info)
 		elseif mode == MODE_STEP_OVER then
 			if step_over_depth == 0 then
 				mode = MODE_PAUSED
-				listen_for_input()
+				listen_for_input(debug_info)
 			end
 		end
 	elseif mode == MODE_STEP_OVER then
