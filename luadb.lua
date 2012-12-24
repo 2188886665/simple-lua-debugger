@@ -1,3 +1,7 @@
+-------------------
+-- Core
+-------------------
+
 local MODE_RUNNING = nil
 local MODE_PAUSED = "paused"
 local MODE_STEP_INTO = "step_into"
@@ -57,6 +61,22 @@ local function debug_event(event, line)
 	end
 end
 
+local function breakpoint()
+	if mode == MODE_RUNNING then
+		local debug_info = debug.getinfo(2, "Sl")
+		local src = debug_info.short_src
+		local line = debug_info.currentline
+		print("(LuaDB) Hit breakpoint: " .. src .. ":" .. line)
+
+		mode = MODE_PAUSED
+		debug.sethook(debug_event, "lrc")
+	end
+end
+
+-------------------
+-- Commands
+-------------------
+
 command_handlers["continue"] = function()
 	debug.sethook()
 	mode = MODE_RUNNING
@@ -73,19 +93,10 @@ command_handlers["next"] = function()
 end
 command_handlers["n"] = command_handlers["next"]
 
-local function breakpoint()
-	if mode == MODE_RUNNING then
-		local debug_info = debug.getinfo(2, "Sl")
-		local src = debug_info.short_src
-		local line = debug_info.currentline
-		print("(LuaDB) Hit breakpoint: " .. src .. ":" .. line)
-
-		mode = MODE_PAUSED
-		debug.sethook(debug_event, "lrc")
-	end
-end
-
+-------------------
 -- Public interface
+-------------------
+
 local luadb = {}
 luadb.b = breakpoint
 luadb.breakpoint = breakpoint
