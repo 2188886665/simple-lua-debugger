@@ -4,8 +4,9 @@ local MODE_STEP_INTO = "step_into"
 local MODE_STEP_OVER = "step_over"
 
 local mode = nil
-local command_handlers = {}
+local step_over_depth = 0
 
+local command_handlers = {}
 local our_source = debug.getinfo(1, "S").source
 
 local function listen_for_input()
@@ -29,11 +30,12 @@ end
 
 local function debug_event(event, line)
 	-- ignore events if they are happening inside luadb
-	local source = debug.getinfo(2).source
+	local debug_info = debug.getinfo(2, "lS")
+	local source = debug_info.source
 	if source == our_source then
 		return
 	end
-
+	
 	if event == "line" then
 		if mode == MODE_PAUSED then
 			listen_for_input()
@@ -41,13 +43,19 @@ local function debug_event(event, line)
 			mode = MODE_PAUSED
 			listen_for_input()
 		elseif mode == MODE_STEP_OVER then
-			-- TODO: Implement!
+			if step_over_depth == 0 then
+				mode = MODE_PAUSED
+				listen_for_input()
+			end
 		end
-	else
-		-- do nothing for now
+	elseif mode == MODE_STEP_OVER then
+		if event == "call" then
+			step_over_depth = step_over_depth + 1
+		elseif event == "return" or event == "tail return" then
+			step_over_depth = step_over_depth - 1
+		end
 	end
 end
-
 
 command_handlers["continue"] = function()
 	debug.sethook()
@@ -59,6 +67,11 @@ command_handlers["step"] = function()
 	mode = MODE_STEP_INTO
 end
 command_handlers["s"] = command_handlers["step"]
+
+command_handlers["next"] = function()
+	mode = MODE_STEP_OVER
+end
+command_handlers["n"] = command_handlers["next"]
 
 local function breakpoint()
 	if mode == MODE_RUNNING then
