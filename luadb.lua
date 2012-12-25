@@ -125,6 +125,17 @@ command_handlers["n"] = command_handlers["next"]
 command_handlers["do"] = function(input)
 	-- parse out the 'do':
 	local code = string.sub(input, 3)
+	if #code == 0 then  -- multiline input
+		print("(db) multiline input, finish with a line containing only ';'")
+		code = ""
+		local line = ""
+		while line ~= ";" do
+			line = io.read()
+			if line ~= ";" then
+				code = code .. line .. "\n"
+			end
+		end
+	end
 	local func, err = loadstring(code)
 	if func == nil then
 		error(err)
