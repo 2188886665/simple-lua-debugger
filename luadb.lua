@@ -42,9 +42,13 @@ local function listen_for_input(debug_info)
 
 		local handler = command_handlers[command]
 		if handler then
-			finished, error_msg = pcall(function() handler(input) end)
-			if not finished and error_msg then
-				print("(db) Failed running command: " .. tostring(error_msg))
+			local success, result = pcall(function() return handler(input) end)
+			if not success then
+				print("(db) Failed running command: " .. tostring(result))
+			else
+				if result == true then
+					finished = true
+				end
 			end
 		else
 			print("(db) Unknown command: " .. command)
@@ -97,21 +101,37 @@ end
 -- Commands
 -------------------
 
+-- If a command returns true, it'll continue execution
+
 command_handlers["continue"] = function()
 	debug.sethook()
 	mode = MODE_RUNNING
+	return true
 end
 command_handlers["c"] = command_handlers["continue"]
 
 command_handlers["step"] = function()
 	mode = MODE_STEP_INTO
+	return true
 end
 command_handlers["s"] = command_handlers["step"]
 
 command_handlers["next"] = function()
 	mode = MODE_STEP_OVER
+	return true
 end
 command_handlers["n"] = command_handlers["next"]
+
+command_handlers["do"] = function(input)
+	-- parse out the 'do':
+	local code = string.sub(input, 3)
+	local func, err = loadstring(code)
+	if func == nil then
+		error(err)
+	else
+		func()
+	end
+end
 
 -------------------
 -- Public interface
