@@ -16,17 +16,7 @@ local command_handlers = {}
 local our_source = debug.getinfo(1, "S").source
 
 local function get_line_of_code(debug_info)
-	local file_name = debug_info.source
-
-	-- not from a file
-	if string.sub(file_name, 1, 1) ~= "@" then
-		return nil
-	end
-	
-	-- string '@'
-	file_name = string.sub(file_name, 2)
-
-	return luadb_src.get_line(file_name, debug_info.currentline)
+	return luadb_src.get_line(debug_info.source, debug_info.currentline)
 end
 
 local function listen_for_input(debug_info)
