@@ -11,6 +11,7 @@
 --
 -------------------
 
+local OUR_SOURCE = debug.getinfo(1, "S").source
 
 -------------------
 -- "Modules"
@@ -87,6 +88,56 @@ local luadb_src = (function()
 	return luadb_src
 end)()
 
+-------------------
+-- luadb_vars - Helps with variables in the script being debugged
+-------------------
+
+local luadb_vars = (function()
+	local function new_variable_ref(name, value)
+		return { name=name, value=value }
+	end
+
+	-- finds a variable (only locals currently, upvalues in the future)
+	local function find_variable(var_name)
+		-- we can start at 3 because: 0 - getinfo, 1 - this func, 2 - internal method calling this func
+		local level = 3
+		local info = debug.getinfo(level, "S")
+
+		-- navigate up the stack...
+		while info ~= nil do
+			-- are we out of this file yet?
+			if info.source ~= OUR_SOURCE then
+				-- loop through all local variables at current level
+				local local_index = 1
+				local name, value = debug.getlocal(level, local_index)
+
+				while name ~= nil do
+					if name == var_name then
+						return new_variable_ref(name, value)
+					else
+						local_index = local_index + 1
+						name, value = debug.getlocal(level, local_index)
+					end
+				end
+			end
+
+			level = level + 1
+			info = debug.getinfo(level, "S")
+		end
+
+		return nil
+	end
+
+	-------------------
+	-- Public interface
+	-------------------
+	local luadb_vars = {}
+	luadb_vars.find_variable = find_variable
+
+	return luadb_vars
+end)()
+
+
 
 -------------------
 -- Core
@@ -101,7 +152,6 @@ local mode = nil
 local step_over_depth = 0
 
 local command_handlers = {}
-local our_source = debug.getinfo(1, "S").source
 
 local function get_line_of_code(debug_info)
 	return luadb_src.get_line(debug_info.source, debug_info.currentline)
@@ -138,7 +188,7 @@ local function debug_event(event, line)
 	-- ignore events if they are happening inside luadb
 	local debug_info = debug.getinfo(2, "lS")
 	local source = debug_info.source
-	if source == our_source then
+	if source == OUR_SOURCE then
 		return
 	end
 	
@@ -221,6 +271,18 @@ command_handlers["do"] = function(input)
 		func()
 	end
 end
+
+command_handlers["print"] = function(input)
+	local var_name = string.match(input, "%a+%s+([%a_]+)")
+	local var = luadb_vars.find_variable(var_name)
+	
+	if var == nil then
+		print(nil)
+	else
+		print(var.value)
+	end
+end
+command_handlers["p"] = command_handlers["print"]
 
 -------------------
 -- Public interface

@@ -20,4 +20,5 @@ end
 ]]
 
 local eval_me_chunk = loadstring(eval_me)
+luadb.b()
 eval_me_chunk()
