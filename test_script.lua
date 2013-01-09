@@ -5,6 +5,20 @@ local function return_arg(arg)
 	return arg
 end
 
+-- for testing finding upvalues
+local function new_closure()
+	local i = 0
+	return function()
+		i = i + 1
+		luadb.b()
+		print(i)
+	end
+end
+
+local c = new_closure()
+c()
+c()
+
 print("Hello")
 luadb.b()
 print(return_arg("World"))

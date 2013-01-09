@@ -97,15 +97,21 @@ local luadb_vars = (function()
 		return { name=name, value=value, scope="local" }
 	end
 
+	local function new_upvalue_ref(name, value)
+		return { name=name, value=value, scope="upvalue" }
+	end
+
 	local function new_global_ref(name, value)
 		return { name=name, value=value, scope="global" }
 	end
 
 	-- finds a variable (only locals currently, upvalues in the future)
 	local function find_variable(var_name)
+		local empty_func = function() return end
+
 		-- we can start at 3 because: 0 - getinfo, 1 - this func, 2 - internal method calling this func
 		local level = 3
-		local info = debug.getinfo(level, "S")
+		local info = debug.getinfo(level, "Sf")
 
 		-- navigate up the stack...
 		while info ~= nil do
@@ -123,10 +129,23 @@ local luadb_vars = (function()
 						name, value = debug.getlocal(level, local_index)
 					end
 				end
+
+				-- loop through all upvalues at current level
+				local upvalue_index = 1
+				name, value = debug.getupvalue(info.func or empty_func, upvalue_index)
+
+				while name ~= nil do
+					if name == var_name then
+						return new_upvalue_ref(name, value)
+					else
+						upvalue_index = upvalue_index + 1
+						name, value = debug.getupvalue(info.func or empty_func, upvalue_index)
+					end
+				end
 			end
 
 			level = level + 1
-			info = debug.getinfo(level, "S")
+			info = debug.getinfo(level, "Sf")
 		end
 
 		if _G[var_name] ~= nil then
