@@ -93,8 +93,12 @@ end)()
 -------------------
 
 local luadb_vars = (function()
-	local function new_variable_ref(name, value)
-		return { name=name, value=value }
+	local function new_local_ref(name, value)
+		return { name=name, value=value, scope="local" }
+	end
+
+	local function new_global_ref(name, value)
+		return { name=name, value=value, scope="global" }
 	end
 
 	-- finds a variable (only locals currently, upvalues in the future)
@@ -113,7 +117,7 @@ local luadb_vars = (function()
 
 				while name ~= nil do
 					if name == var_name then
-						return new_variable_ref(name, value)
+						return new_local_ref(name, value)
 					else
 						local_index = local_index + 1
 						name, value = debug.getlocal(level, local_index)
@@ -123,6 +127,10 @@ local luadb_vars = (function()
 
 			level = level + 1
 			info = debug.getinfo(level, "S")
+		end
+
+		if _G[var_name] ~= nil then
+			return new_global_ref(var_name, _G[var_name])
 		end
 
 		return nil
